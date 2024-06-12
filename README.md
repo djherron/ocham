@@ -4,7 +4,7 @@ OCHAM = OWL class hierarchy adjacency matrix
 
 The OCHAM tool consumes an OWL ontology and produces an adjacency matrix that encodes the class hierarchy defined in that ontology.
 
-# Files associated with the OCHAM tool
+## Files associated with the OCHAM tool
 
 ocham_tool.py
 * a module that defines the Python class that is the core of the OCHAM tool
@@ -19,11 +19,8 @@ test_ocham_tool.py
 onto-01.ttl
 * an OWL ontology that defines nothing but a simple class hierarchy
 
-README.md
-* this file, the file you are reading
 
-
-# Dependencies
+## Dependencies
 
 Python packages:
 * PyTorch
@@ -31,7 +28,7 @@ Python packages:
 * OWLRL
 
 
-# OWL ontologies and the OCHAM tool
+## OWL ontologies and the OCHAM tool
 
 The OCHAM tool has some nuances and limitations. We discuss these here.
 
