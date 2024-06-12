@@ -4,11 +4,6 @@ OCHAM = OWL class hierarchy adjacency matrix
 
 The OCHAM tool consumes an OWL ontology and produces a (binary) adjacency matrix that encodes the class hierarchy defined in the ontology.  It returns the matrix and the list of OWL class names extracted from the ontology that was used to construct the matrix.  The list of class names is needed to interpret the matrix.
 
-**Table of Contents**
-[TOC]
-
-
-
 ## Files associated with the OCHAM tool
 
 ocham_tool.py
@@ -34,16 +29,23 @@ Python packages:
 
 ## Functionality
 
-The OCHAM tool
+The OCHAM tool allows the user to specify the desired characteristics of the adjacency matrix to be produced to encode the class hierarchy of an OWL ontology.
 
-The OCHAM tool allows the user to specify the desired characteristics of the adjacency matrix to be produces to encode an OWL ontology class hierarchy in a binary adjacency matrix.
+The user may request an adjacency matrix that encodes either 1) the **asserted** class hierarchy only (i.e. the one declared explicitly in the OWL ontology file) or 2) the **transitive closure** of the class hierarchy.
+
+Three algorithms are available for calculating transitive closures:
+* the 'union of powers' algorithm
+* Warshall's algorithm
+* OWL reasoning
+
+The user may also request that the adjacency matrix reflects the **reflexive** characteristic of OWL's `rdfs:subClassOf` construct.  Reflexivity can be requested in relation to either the **asserted** class hierarchy or the **transitive closure** of the class hierarchy.
 
 
 ## Limitations
 
 The OCHAM tool has some nuances and limitations. We discuss these here.
 
-The OCHAM tool currently sorts the class names extracted from the OWL ontology file in alphabetic order.  The structure of the adjacency matrix is determined by this alphabetic ordering of class names.  If the user desires a different ordering of the class names, currently the user must manually adjust the order of the names in the list and, crucially, adjust the order of the rows of the adjacency matrix correspondingly.
+The OCHAM tool currently sorts the class names extracted from the OWL ontology file in alphabetic order.  The structure of the adjacency matrix is determined by this alphabetic ordering of class names.  If the user desires a different ordering of the class names, currently the user must manually adjust the order of the names in the list of class names and, crucially, adjust the order of the rows of the adjacency matrix correspondingly.
 
 The OCHAM tool currently assumes that the OWL ontology to be processed is expressed in turtle (`.ttl`) syntax. This can be adjusted in function `load_ontology()` in module `ocham_tool.py`.
 
@@ -59,7 +61,7 @@ This declaration implies two `rdfs:subClassOf` axioms, as follows:
 :A rdfs:subClassOf :B .
 :A rdfs:subClassOf :C .
 ```
-When the OCHAM tool builds the adjacency matrix for the **asserted** class hierarchy (the one declared explicitly in the OWL ontology file), it will fail to identify these two implicit `rdfs:subClassOf` axioms.  As a result, if the adjacency matrix for the **transitive closure** of the class hierarchy has been requested by the user, and the transitive closure is computed without using OWL reasoning, then the transitive closure will be incomplete, and hence the adjacency matrix for the transitive closure will be incomplete. In such cases, the user can opt to have the transitive closure computed by OWL reasoning. OWL reasoning will infer the two implicit `rdfs:subClassOf` axioms and make them explicit. Thus, when the adjacency matrix for the transitive closure of the class hierarchy is constructed, it will include these two `rdfs:subClassOf` axioms, and any other `rdfs:subClassOf` axioms entailed by them.
+When the OCHAM tool builds the adjacency matrix for the **asserted** class hierarchy (the one declared explicitly in the OWL ontology file), it will fail to identify these two implicit `rdfs:subClassOf` axioms.  As a result, if the adjacency matrix for the **transitive closure** of the class hierarchy has been requested by the user, and the transitive closure is computed without using OWL reasoning, then the transitive closure will be incomplete, and hence the adjacency matrix for the transitive closure will be incomplete. In such cases, the user can opt to have the transitive closure computed by OWL reasoning. OWL reasoning will infer the two implicit `rdfs:subClassOf` axioms and make them explicit, along with any other `rdfs:subClassOf` axioms entailed by them. Thus, the adjacency matrix constructed for the transitive closure of the class hierarchy will include these two (previously implicit) `rdfs:subClassOf` axioms as well as any other `rdfs:subClassOf` axioms entailed by them.
 
 
 
