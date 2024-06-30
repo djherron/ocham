@@ -14,6 +14,8 @@ import torch
 
 from owlrl import DeductiveClosure, OWLRL_Semantics
 
+import networkx as nx
+
 
 #%%
 
@@ -306,7 +308,7 @@ def transitive_closure_3(kg, classNames):
     # class hierarchy, but the only way to get this is to compute the
     # deductive closure of (i.e. materialise) the entire KG
     dc.expand(kg)
-
+    
     # initialise an empty adjacency matrix for the transitive closure
     C = len(classNames)
     adj_mat = torch.zeros(C,C)
@@ -315,14 +317,14 @@ def transitive_closure_3(kg, classNames):
     # OWL construct rdfs:subClassOf as the predicate
     query = "SELECT ?sub ?obj WHERE { " + \
             "?sub rdfs:subClassOf ?obj . }"
-        
+    
     # execute the query
     qres = kg.query(query)
         
     # iterate over the result set and encode the (child-class, parent-class)
     # relationships that pertain to transitivity in an adjacency matrix;
-    # (note: that is, ignore any rdfs:subClassOf triples that result from
-    #  the reflexive characteristic of the rdfs:subClassOf OWL construct) 
+    # (that is, we ignore any rdfs:subClassOf triples that arise from
+    #  the reflexive characteristic of the rdfs:subClassOf property)
     for row in qres:
         child = get_uri(row.sub)
         parent = get_uri(row.obj)
@@ -330,23 +332,62 @@ def transitive_closure_3(kg, classNames):
             child_idx = classNames.index(child)
             if parent in classNames:
                 parent_idx = classNames.index(parent)
-                if child_idx != parent_idx:
+                if child_idx != parent_idx:  # i.e. ignore reflexive triples
                     adj_mat[child_idx, parent_idx] = 1.0             
     
     return adj_mat
 
 
+#%%
+
+def find_longest_path(matrix, classNames, source_classNames, target_className):
+    '''
+    Find the longest (simple) path between source nodes and a target node.
+    
+    We use the Python package networkx to find all simple paths between
+    the source nodes and the target node. Then we return one of the longest
+    paths found along with its length.
+    '''
+     
+    # convert the incoming matrix from a PyTorch tensor to a 2D numpy array
+    matrix_np = matrix.numpy()
+    
+    # instantiate the adjacency matrix representing the OWL class hierarchy
+    # as a networkx digraph
+    G = nx.DiGraph(matrix_np)
+    
+    # convert the source class names to their integer indices
+    start_nodes = []
+    for name in source_classNames:
+        class_idx = classNames.index(name)
+        start_nodes.append(class_idx)
+    
+    # convert the target class name to its integer index
+    target_node = classNames.index(target_className)
+    
+    # initialise the return variables
+    a_longest_path_indices = None
+    a_longest_path_names = []
+    max_length = 0
+    
+    # iterate over the source nodes and find the longest path to the target
+    for source_node in start_nodes:
+        paths = nx.all_simple_paths(G, source_node, target_node)
+        for path in paths:
+            length = len(path)-1
+            #print(f'{path} length: {length}')
+            if length > max_length:
+                max_length = length
+                a_longest_path_indices = path
+    
+    if a_longest_path_indices != None:   
+        for idx in a_longest_path_indices:
+            a_longest_path_names.append(classNames[idx])
+    
+    return a_longest_path_names, a_longest_path_indices, max_length
 
 
-
-
-
-
-
-
-
-
-
+#%%
 
 
 

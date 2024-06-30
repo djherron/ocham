@@ -63,7 +63,7 @@ class OCHAM():
         # characteristic of the OWL rdfs:subClassOf property be 
         # included in the adjacency matrix of the OWL class hierarchy
         self.include_reflexivity = include_reflexivity
-        
+                
         # an attribute to hold an instance of an RDFlib KG; the OWL
         # ontology is loaded into this KG for subsequent processing
         self.kg = None
@@ -294,7 +294,53 @@ class OCHAM():
         
         return self.result_matrix, self.classNames
 
+    
+    def get_longest_path(self, source_classNames, target_className):
+        '''
+        Find the longest simple path in the OWL class hierarchy between
+        a set of source class names and a single target class name.
+        
+        The source class names are normally expected to be leaf nodes in
+        the class hierarchy, and the target class name is normally expected
+        to be the top-most class in the hierarchy.
 
+        Parameters
+        ----------
+        source_classNames : list of strings
+            A list of class names from the ontology.
+        target_className : string
+            A class name from the ontology.
 
+        Returns
+        -------
+        longest_path : list of integers
+            A longest path found in the class hierarchy.
+        longest_path_length : integer
+            The length of the longest path found in the class hierarchy
+
+        '''
+               
+        if len(source_classNames) == 0:
+            raise ValueError('expected one or more source class names')
+        
+        for name in source_classNames:
+            if not name in self.classNames:
+                raise ValueError(f'source class name not recognised: {name}')
+        
+        if target_className == None:
+            raise ValueError('expected one target class name')
+            
+        if not target_className in self.classNames:
+            raise ValueError(f'target class name not recognised: {name}')
+        
+        res = ochamu.find_longest_path(self.result_matrix,
+                                       self.classNames,
+                                       source_classNames,
+                                       target_className)
+        longest_path_names = res[0]
+        longest_path_indices = res[1]
+        longest_path_length = res[2]
+        
+        return longest_path_names, longest_path_indices, longest_path_length
 
 

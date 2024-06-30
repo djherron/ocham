@@ -27,7 +27,7 @@ import ocham_tool_utils as ochamu
 #
 
 # set ontology filename
-ontology_filename = 'onto-01.ttl'
+ontology_filename = 'onto-G4.ttl'
 
 # set the method to be used for computing the transitive closure of the
 # class hierarchy asserted in the OWL ontology; they all produce the same
@@ -39,7 +39,7 @@ ontology_filename = 'onto-01.ttl'
 # 1 - the 'union of powers' algorithm
 # 2 - the Warshall algorithm
 # 3 - OWL reasoning (via OWLRL)
-transitive_closure_method = 3 
+transitive_closure_method = 0
 
 # specify whether or not to include the reflexive characteristic of the
 # rdfs:subClassOf property in the adjacency matrix; if set to True, the
@@ -107,6 +107,43 @@ print('the nonzero elements, e.g. (:A rdfs:subClassOf :B)')
 print()
  
 ochamu.show_encoded_triples(adjacency_matrix.nonzero(), classNames)
+
+
+#%% get longest path between source classes and a target class
+
+# base classes
+source_classNames = ['http://example.com/ontologies/onto-G1#G',
+                     'http://example.com/ontologies/onto-G1#H',
+                     'http://example.com/ontologies/onto-G1#I',
+                     'http://example.com/ontologies/onto-G1#J',
+                     'http://example.com/ontologies/onto-G1#K' ]
+
+# top-most class in the hierarchy
+target_className = 'http://example.com/ontologies/onto-G1#A'
+
+res = ocham.get_longest_path(source_classNames, target_className)
+longest_path_names = res[0]
+longest_path_indices = res[1]
+longest_path_length = res[2]
+
+print('longest path results retrieved')
+print()
+print('a longest simple path:')
+for name in longest_path_names:
+    print(name)
+print()
+print('the same longest simple path as integer indices:')
+print(longest_path_indices)
+print()
+print(f'length of longest simple path: {longest_path_length}')
+
+
+
+
+
+
+
+
 
 
 

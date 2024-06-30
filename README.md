@@ -13,12 +13,21 @@ ocham_tool_utils.py
 * a module that defines some utility functions associated with the OCHAM tool
 
 test_ocham_tool.py
-* a script that doubles as 1) a driver for testing the OCHAM tool, and 2) an example of how to use the OCHAM tool and how to inspect the results that it returns: a) an adjacency matrix, and b) the list of class names used to construct and interpret the adjacency matrix
+* a script that doubles as 1) a driver for testing the OCHAM tool, and 2) an example of how to use the OCHAM tool and how to inspect the results that it returns.
 * this script is designed to be run interactively in an IDE that recognises code sections delimited with `#%%` markers; execute a section and review the results written to the IDE's console window
+* `get_results()` returns a) an adjacency matrix, and b) the list of class names used to construct and interpret the adjacency matrix
+* `get_longest_path()` returns a longest path in the class hierarchy and the length of this longest path
 
 onto-01.ttl
 * an OWL ontology that defines nothing but a simple class hierarchy
 
+onto-G1.ttl
+onto-G2.ttl
+onto-G3.ttl
+onto-G4.ttl
+* a series of OWL ontologies that define variations of a simple class hierarchy
+* the class hierarchy of G2 extends G1; G3 extends G2; and G4 extends G3
+* G4 contains a 2-cycle (two classes that are rdfs:subClassOf one another)
 
 ## Dependencies
 
@@ -26,6 +35,7 @@ Python packages:
 * PyTorch
 * RDFlib
 * OWLRL
+* NetworkX
 
 ## Functionality
 
@@ -40,6 +50,9 @@ Three algorithms are available for calculating transitive closures:
 
 The user may also request that the adjacency matrix reflects the **reflexive** characteristic of OWL's `rdfs:subClassOf` construct.  Reflexivity can be requested in relation to either the **asserted** class hierarchy or the **transitive closure** of the class hierarchy.
 
+The OCHAM tool consumes the ontology and produces the adjacency matrix at instantiation. The adjacency matrix and the list of class names used to construct it are obtained via the API call `get_results()`.
+
+The OCHAM tool can also find longest paths in the class hierarchy declared in the OWL ontology. Given a list of source class names, and a target class name, the API call `get_longest_path()` will return an instance of a longest path in the class hierarchy along with the length of this longest path.
 
 ## Limitations
 
@@ -62,13 +75,6 @@ This declaration implies two `rdfs:subClassOf` axioms, as follows:
 :A rdfs:subClassOf :C .
 ```
 When the OCHAM tool builds the adjacency matrix for the **asserted** class hierarchy (the one declared explicitly in the OWL ontology file), it will fail to identify these two implicit `rdfs:subClassOf` axioms.  As a result, if the adjacency matrix for the **transitive closure** of the class hierarchy has been requested by the user, and the transitive closure is computed without using OWL reasoning, then the transitive closure will be incomplete, and hence the adjacency matrix for the transitive closure will be incomplete. In such cases, the user can opt to have the transitive closure computed by OWL reasoning. OWL reasoning will infer the two implicit `rdfs:subClassOf` axioms and make them explicit, along with any other `rdfs:subClassOf` axioms entailed by them. Thus, the adjacency matrix constructed for the transitive closure of the class hierarchy will include these two (previously implicit) `rdfs:subClassOf` axioms as well as any other `rdfs:subClassOf` axioms entailed by them.
-
-
-
-
-
-
-
 
 
 
