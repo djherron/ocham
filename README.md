@@ -18,6 +18,9 @@ test_ocham_tool.py
 * `get_results()` returns a) an adjacency matrix, and b) the list of class names used to construct and interpret the adjacency matrix
 * `get_longest_path()` returns a longest path in the class hierarchy and the length of this longest path
 
+test_ocham_tool_2.py
+* a script that verifies that the adjacency matrix produced by the OCHAM tool correctly encodes the transitive closure of the ontology class hierarchy, as inferred by OWL reasoning
+
 onto-01.ttl
 * an OWL ontology that defines nothing but a simple class hierarchy
 
