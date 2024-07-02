@@ -28,10 +28,14 @@ from owlrl import DeductiveClosure, OWLRL_Semantics
 
 #%% instantiate an OCHAM tool object
 
-ontology_filename = 'onto-G4.ttl'
+#ontology_filename = 'onto-G4.ttl'
+ontology_filename = 'vrd_world_v1.owl'
 
-# specify the base prefix (@base) used in the ontology
-url_base = "http://example.com/ontologies/onto-G1#"
+# the base prefix (@base) used in the ontologies G1, G2, G3, G4
+#url_base = "http://example.com/ontologies/onto-G1#"
+
+# the base prefix (@base) used in the ontology vrd_world_v1.owl
+url_base = "http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#"
 
 # valid values:
 # 0 - do not compute the transitive closure of the class hierarchy; we want
@@ -109,12 +113,13 @@ for idx, className in enumerate(classNames):
     
     individual_names.append(individual_name)
 
-print('Triples asserting one individual member per class inserted into KG')
+print('Triples asserting one unique individual per class inserted into KG')
+print('Example: :individual_1234 rdf:type :someClass')
 print(f'Number of triples inserted: {len(classNames)}')
 print(f'The KG now has {len(kg)} triples')
 
 
-#%% display the individual class membership triples inserted into the KG
+#%% get the individual class membership triples inserted into the KG
 
 query = """
         SELECT ?head ?tail
@@ -124,15 +129,63 @@ query = """
     
 # execute query
 qres = kg.query(query)
-  
-# iterate over the query result set to get the class names
-for row in qres:  
-    head = ochamu.get_uri(row.head)
-    tail = ochamu.get_uri(row.tail)
-    # if we have a valid URI, store the class URI (aka class name)
-    if not 'owl#' in tail:
-        print(head, tail)
 
+print(f'Number of rdf:type triples retrieved from KG: {len(qres)}')
+
+
+#%% display the individual class membership triples inserted into the KG
+
+show_triples = True
+
+show_blank_nodes = False
+
+triples_for_named_classes_count = 0
+triples_for_anonymous_classes_count = 0
+
+# iterate over the query result set 
+for row in qres:
+    
+    head_uri = ochamu.get_uri(row.head)
+    if '#' in head_uri:
+        head = head_uri.split(sep='#')[1]
+    else:
+        head = head_uri.split(sep='/')[-1]
+    
+    # accept only triples where the head is one of the synthetic
+    # individuals that we inserted into the KG
+    if not head.startswith('individual_'):
+        continue
+    
+    tail_uri = ochamu.get_uri(row.tail)   
+        
+    # ignore triples like (:individual_nnnn rdf:type owl#Thing)
+    if 'owl#' in tail_uri:
+        continue
+ 
+    if tail_uri.startswith('http://'):
+        blank_node = False
+        if '#' in tail_uri:
+            tail = tail_uri.split(sep='#')[1]
+        else:
+            tail = tail_uri.split(sep='/')[-1]
+    else:
+        blank_node = True
+        tail = tail_uri   
+
+    if blank_node:
+        triples_for_anonymous_classes_count += 1
+    else:
+        triples_for_named_classes_count += 1
+    
+    # display the triple (without rdf:type in the middle)
+    if not blank_node or show_blank_nodes:
+        if show_triples:
+            print(head, tail)
+
+print()
+print(f'Number of (:individual rdf:type :namedClass) triples: {triples_for_named_classes_count}')
+print()
+print(f'Number of (:individual rdf:type :blankNode) triples: {triples_for_anonymous_classes_count}')
 
 #%%
 
@@ -156,8 +209,12 @@ print(f'The KG now has {len(kg)} triples')
 
 #%% retrieve the class membership triples inferred for synthetic individuals
 
-class_idx_start = 0
-class_idx_end = 4
+# NOTE: if the ontology uses anonymous classes to define classes in the
+# class hierarchy, then our synthetic individuals may sometimes be inferred
+# to be members of anonymous class (blank nodes) as well as named classes
+
+class_idx_start = 10
+class_idx_end = 14
 
 if class_idx_end > len(classNames):
     raise ValueError('range of class index values is invalid')
@@ -215,17 +272,25 @@ for idx in range(class_idx_start, class_idx_end):
 # 'include_reflexivity' configuration parameter when using the OCHAM tool
 # to create the adjacency matrix.
 
+# under all normal circumstances, we want to EXCLUDE BLANK NODES
+# (i.e. anonymous classes); the OCHAM tool ignores anonymous classes and
+# never encodes them in the adjacency matrix representations of the class
+# hierarchies that it produces; so when working with the rdf:type class
+# membership triples that OWL reasoning infers, we normally want to ignore
+# blank nodes (anonymous classes) as well
+exclude_blank_nodes = True
+
 kg_results = {}
 
-for idx, childClassName in enumerate(classNames):
+for childClassIdx, childClassName in enumerate(classNames):
 
     # assemble a SPARQL query to get all of the rdf:type triples for
     # the current individual
-    individual_name = individual_names[idx]
+    individual_name = individual_names[childClassIdx]
     individual_uri = url_base + individual_name
     query = "SELECT ?tail WHERE { " + \
             "<" + individual_uri + ">" + " rdf:type ?tail . }"
-
+    
     # execute the query
     qres = kg.query(query)
     
@@ -234,6 +299,12 @@ for idx, childClassName in enumerate(classNames):
     parent_class_membership = []
     for row in qres:
         parentClassName = ochamu.get_uri(row.tail)
+        if parentClassName.startswith('http://'):
+            blank_node = False
+        else:
+            blank_node = True
+        if blank_node and exclude_blank_nodes:
+            continue
         if not 'owl#' in parentClassName:
             if parentClassName != childClassName: 
                 parent_class_membership.append(parentClassName)
@@ -241,12 +312,15 @@ for idx, childClassName in enumerate(classNames):
     kg_results[individual_name] = {'asserted_child_class': childClassName,
                                    'inferred_parent_classes': parent_class_membership }
 
+print()
+print(f'Number of entries in KG results dictionary: {len(kg_results)}')
+
 
 #%% compare the parents in the adjacency matrix with the parents inferred by OWL
 
 nclasses = len(classNames)
 
-discrepancy_found = False
+discrepancy_count = 0
 
 if transitive_closure_method == 0:
     raise ValueError('ERROR: adjacency matrix does not encode a transitive closure')
@@ -295,7 +369,7 @@ for childClassIdx, childClassName in enumerate(classNames):
             # we must take care to avoid reporting a discrepancy in this
             # special edge case
             if childClassIdx == parentClassIdx and not include_reflexivity:
-                discrepancy_found = True
+                discrepancy_count += 1
                 print()
                 print('DISCREPANCY:')
                 print('child class')
@@ -309,9 +383,15 @@ for childClassIdx, childClassName in enumerate(classNames):
     # as recognised by OWL reasoning is encoded as a parent class in the
     # adjacency matrix        
     for parentName in kg_parent_classes:
+        if parentName.startswith('http://'):
+            blank_node = False
+        else:
+            blank_node = True
+        if blank_node:  # ignore blank nodes (anonymous classes), if present
+            continue
         parentClassIdx = classNames.index(parentName)
         if not parentClassIdx in adj_mat_parent_class_idxs3:
-            discrepancy_found = True
+            discrepancy_count += 1
             print()
             print('DISCREPANCY:')
             print('child class')
@@ -321,10 +401,19 @@ for childClassIdx, childClassName in enumerate(classNames):
             print('that is recognised by OWL reasoning, but that is not')
             print('encoded as a direct parent in the adjacency matrix')    
 
-if not discrepancy_found:
-    print()    
+if discrepancy_count > 0:
+    print()
+    print('Discrepancies detected between the adjacency matrix and the')
+    print('class hierarchy as inferred by OWL reasoning in the KG.')
+    print()
+    print(f'Number of discrepancies detected: {discrepancy_count}')
+    print()
+else:
+    print()
     print('The adjacency matrix encodes the transitive closure')
     print('of the OWL ontology class hierarchy correctly!')
+    print()
+    print(f'Number of discrepancies detected: {discrepancy_count}')
     print()   
 
 

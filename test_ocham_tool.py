@@ -27,7 +27,8 @@ import ocham_tool_utils as ochamu
 #
 
 # set ontology filename
-ontology_filename = 'onto-G4.ttl'
+#ontology_filename = 'onto-G4.ttl'
+ontology_filename = 'vrd_world_v1.owl'
 
 # set the method to be used for computing the transitive closure of the
 # class hierarchy asserted in the OWL ontology; they all produce the same
@@ -39,7 +40,7 @@ ontology_filename = 'onto-G4.ttl'
 # 1 - the 'union of powers' algorithm
 # 2 - the Warshall algorithm
 # 3 - OWL reasoning (via OWLRL)
-transitive_closure_method = 0
+transitive_closure_method = 3
 
 # specify whether or not to include the reflexive characteristic of the
 # rdfs:subClassOf property in the adjacency matrix; if set to True, the
@@ -53,7 +54,7 @@ ocham = OCHAM(ontology_filename,
               transitive_closure_method=transitive_closure_method,
               include_reflexivity=include_reflexivity)
 
-print('OCHAM object instantiated')                
+print('OCHAM tool object instantiated')                
 
 #%% get the results
 
@@ -105,21 +106,31 @@ print(f'number of nonzero elements: {len(ordered_pairs)}')
 
 print('the nonzero elements, e.g. (:A rdfs:subClassOf :B)')
 print()
- 
+
 ochamu.show_encoded_triples(adjacency_matrix.nonzero(), classNames)
 
 
 #%% get longest path between source classes and a target class
 
-# base classes
-source_classNames = ['http://example.com/ontologies/onto-G1#G',
-                     'http://example.com/ontologies/onto-G1#H',
-                     'http://example.com/ontologies/onto-G1#I',
-                     'http://example.com/ontologies/onto-G1#J',
-                     'http://example.com/ontologies/onto-G1#K' ]
+# classes that apply to ontologies (graphs) G1, G2, G3 and G4
+#source_classNames = ['http://example.com/ontologies/onto-G1#G',
+#                     'http://example.com/ontologies/onto-G1#H',
+#                     'http://example.com/ontologies/onto-G1#I',
+#                     'http://example.com/ontologies/onto-G1#J',
+#                     'http://example.com/ontologies/onto-G1#K' ]
 
-# top-most class in the hierarchy
-target_className = 'http://example.com/ontologies/onto-G1#A'
+# classes that apply to ontology vrd_world_v1.owl
+source_classNames = ['http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#Shoe',
+                     'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#Tree',
+                     'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#WasteBin']
+
+
+# top-most class in the class hierarchy of ontologies (graphs) G1, G2, G3, G4
+#target_className = 'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#VRDWorldThing'
+
+# top-most class in the class hierarchy of ontology vrd_world_v1.owl
+target_className = 'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#VRDWorldThing'
+
 
 res = ocham.get_longest_path(source_classNames, target_className)
 longest_path_names = res[0]
