@@ -32,6 +32,10 @@ onto-G4.ttl
 * the class hierarchy of G2 extends G1; G3 extends G2; and G4 extends G3
 * G4 contains a 2-cycle (two classes that are rdfs:subClassOf one another)
 
+vrd_world_v1.owl
+* a copy of the VRD-World ontology (in turtle format, despite the '.owl' suffix)
+* this is a larger, more complex ontology with 239 classes in its class hierarchy
+
 ## Dependencies
 
 Python packages:
