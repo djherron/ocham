@@ -344,3 +344,18 @@ class OCHAM():
         return longest_path_names, longest_path_indices, longest_path_length
 
 
+    def get_simple_cycles(self):
+        '''
+        Get all simple cycles in the graph
+        
+        A simple cycle is a closed path where no node appears twice.
+        The simplest simple cycle is a self-loop (:X rdfs:subClassOf :X)
+        The next simplest simple cycle is a 2-cycle, (:X rdfs:subClassOf :Y),
+        and (:Y rdfs:subClassOf :X).
+        '''
+        
+        cycles = ochamu.find_simple_cycles(self.result_matrix)
+        
+        return cycles
+    
+    

@@ -96,6 +96,9 @@ def transitive_closure_1(relation, extra_powers=0, verbose=0, patience=0,
     identified three reasons why the union of the power matrices computed
     so far may stop changing. We report when early stopping has been
     invoked to stop the algorithm and we report the reason why.
+    
+    See "Relations and Graphs", Schmidt & Strohlein, section 3.2.1, pg 35,
+    and see also pg 2 for important info and context for interpreting pg 35.
            
     Parameters
     ----------
@@ -289,11 +292,45 @@ def transitive_closure_2(relation, operation='boolean_OR'):
 def transitive_closure_3(kg, classNames):
     '''
     Find the transitive closure of the rdfs:subClassOf class hierarchy
-    asserted in an RDFlib KG using OWL reasoning with OWLRL.
+    asserted in an RDFlib KG using OWL reasoning.
     
+    The OWL reasoning is performed by OWLRL.
+    
+    This method relies primarily on OWL reasoning, but it also uses 
+    transitive closure method 1 to potentially infer edge cases that may
+    have been missed by our use of OWL reasoning alone.
+        
     With this method of finding the transitive closure of an OWL class
     hierarchy, it is easiest to build a fresh adjacency matrix from
     scratch.
+    
+    Summary of the transitive closure method implemented here:
+    * a) use OWL reasoning to materialise the KG
+    * b) build an initial adjacency matrix from all of the 
+         (:A rdfs:subClassOf :B) triples where (:A != :B); that is, we 
+         ignore all reflexive triples such as (:A rdfs:subClassOf :A);
+         but note that by excluding all reflexive triples we may 
+         inadvertently ignore some that arise naturally from transitivity
+         reasoning (as opposed to reflexivity reasoning) due to cycles, 
+         e.g. 2-cycles, in the graph of the ontology class hierarchy; such
+         triples are valid members of the transitive closure, and belong in
+         the adjacency matrix for the transitive closure; but we can't
+         distinguish between reflexive triples inferred by OWL due to
+         transitivity reasoning (rfds11) from those inferred by OWL due to 
+         reflexivity reasoning (rdfs10); so rather than encode invalid 
+         reflexive triples in our transitive closure adjacency matrix, we
+         opt to exclude all reflexive triples at this stage
+    * c) give the result (b) matrix to transitive closure method 1
+         ('union of powers'); if the graph contains any cycles, these
+         will lead to reflexive triples arising on the diagonal of
+         result matrix (c); these are reflexive triples that were
+         inadvertently excluded in (b) because we couldn't recognise that 
+         they were inferred by transitivity rather than reflexivity;
+         if the graph of the class hierarchy contains no cycles, the 
+         matrix from (c) will be identical to that from (b); if cycles exist,
+         result matrix (c) will be identical to that from (b) except for the
+         presence of some reflexive triples on the diagonal
+    * d) return result matrix (c)
     '''
 
     # configure the form of KG materialisation we wish to perform
@@ -302,17 +339,15 @@ def transitive_closure_3(kg, classNames):
                           axiomatic_triples = False,
                           datatype_axioms = False)
 
-    # materialise the KG
-    #
+    # a) materialise the KG
+    
     # note: all we need is the transitive closure of the rdfs:subClassOf
     # class hierarchy, but the only way to get this is to compute the
     # deductive closure of (i.e. materialise) the entire KG
     dc.expand(kg)
-    
-    # initialise an empty adjacency matrix for the transitive closure
-    C = len(classNames)
-    adj_mat = torch.zeros(C,C)
 
+    # b) build transitive closure adjacency matrix using OWL reasoning
+    
     # build a SPARQL query to get all of the triples that have
     # OWL construct rdfs:subClassOf as the predicate
     query = "SELECT ?sub ?obj WHERE { " + \
@@ -320,6 +355,10 @@ def transitive_closure_3(kg, classNames):
     
     # execute the query
     qres = kg.query(query)
+    
+    # initialise an empty adjacency matrix for the transitive closure
+    C = len(classNames)
+    adj_mat = torch.zeros(C,C)
         
     # iterate over the result set and encode the (child-class, parent-class)
     # relationships that pertain to transitivity in an adjacency matrix;
@@ -335,7 +374,14 @@ def transitive_closure_3(kg, classNames):
                 if child_idx != parent_idx:  # i.e. ignore reflexive triples
                     adj_mat[child_idx, parent_idx] = 1.0             
     
-    return adj_mat
+    # c) call trans closure method 1 to infer any potential reflexive
+    #    triples onto the diagonal of the adjacency matrix from (b)
+    
+    adj_mat2, alert = transitive_closure_1(adj_mat, extra_powers=0, 
+                                           verbose=0, patience=0,
+                                           early_stopping_active=True)  
+        
+    return adj_mat2
 
 
 #%%
@@ -389,11 +435,18 @@ def find_longest_path(matrix, classNames, source_classNames, target_className):
 
 #%%
 
+def find_simple_cycles(matrix):
+    
+    # convert the incoming matrix from a PyTorch tensor to a 2D numpy array
+    matrix_np = matrix.numpy()
+    
+    # instantiate the adjacency matrix representing the OWL class hierarchy
+    # as a networkx digraph
+    G = nx.DiGraph(matrix_np)    
 
+    cycles = nx.simple_cycles(G)
 
-
-
-
+    return cycles
 
 
 

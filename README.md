@@ -19,7 +19,7 @@ test_ocham_tool.py
 * `get_longest_path()` returns a longest path in the class hierarchy and the length of this longest path
 
 test_ocham_tool_2.py
-* a script that verifies that the adjacency matrix produced by the OCHAM tool correctly encodes the transitive closure of the ontology class hierarchy, as inferred by OWL reasoning
+* a script that verifies that the adjacency matrix produced by the OCHAM tool agrees with the deductive closure of a KG materialsed with OWL reasoning
 
 onto-01.ttl
 * an OWL ontology that defines nothing but a simple class hierarchy
@@ -48,6 +48,10 @@ Python packages:
 
 The OCHAM tool allows the user to specify the desired characteristics of the adjacency matrix to be produced to encode the class hierarchy of an OWL ontology.
 
+The OCHAM tool consumes the ontology and produces the adjacency matrix at instantiation. The adjacency matrix and the list of class names used to construct it are obtained via the API call `get_results()`.
+
+#### Transitivity 
+
 The user may request an adjacency matrix that encodes either 1) the **asserted** class hierarchy only (i.e. the one declared explicitly in the OWL ontology file) or 2) the **transitive closure** of the class hierarchy.
 
 Three algorithms are available for calculating transitive closures:
@@ -55,11 +59,22 @@ Three algorithms are available for calculating transitive closures:
 * Warshall's algorithm
 * OWL reasoning
 
-The user may also request that the adjacency matrix reflects the **reflexive** characteristic of OWL's `rdfs:subClassOf` construct.  Reflexivity can be requested in relation to either the **asserted** class hierarchy or the **transitive closure** of the class hierarchy.
+#### Reflexivity
 
-The OCHAM tool consumes the ontology and produces the adjacency matrix at instantiation. The adjacency matrix and the list of class names used to construct it are obtained via the API call `get_results()`.
+The user may also request that the adjacency matrix reflects the **reflexive** characteristic of OWL's `rdfs:subClassOf` construct.  Reflexivity can be requested in relation to either the **asserted** class hierarchy or the **transitive closure** of the class hierarchy. A transitive closure that includes full reflexivity is sometimes called a reflexive-transitive closure.
+
+#### Longest paths
 
 The OCHAM tool can also find longest paths in the class hierarchy declared in the OWL ontology. Given a list of source class names, and a target class name, the API call `get_longest_path()` will return an instance of a longest path in the class hierarchy along with the length of this longest path.
+
+#### Cycles
+
+The OCHAM tool can also find simple cycles in the graph of the class hierarchy that it encodes in the adjacency matrix it produces.  A simple cycle is a closed path where no class (graph node) appears twice (except for the initial and final nodes, which close the path). Use the API call `get_simple_cycles()` to check for cycles.
+
+A 1-cycle is a cycle of length 1. For example, `(:A rdfs:subClassOf :A)` is a 1-cycle. These 1-cycles (or reflexive relationships, or self-loops), if they exist in the graph, appear on the diagonal of the adjacency matrix. A 2-cycle is a cycle of length 2. For example, a pair of triples `(:A rdfs:subClassOf :B)` and `(:B rdfs:subClassOf :A)` represents a 2-cycle.
+
+If a $k$-cycle, for $k > 1$, exists in the graph of a class hierarchy, inference of the transitive closure leads to inference of a 1-cycle (self-loop) for each of the $k$ elements involved in the cycle.  For instance, our example 2-cycle would lead to 1-cycles `(:A rdfs:subClassOf :A)` and `(:B rdfs:subClassOf :B)` being represented on the diagonal of the OCHAM tool's adjacency matrix.  In other words, if a graph contains cycles, transitivity reasoning will naturally produce (valid) reflexive results. 
+
 
 ## Limitations
 

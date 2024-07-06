@@ -27,8 +27,8 @@ import ocham_tool_utils as ochamu
 #
 
 # set ontology filename
-#ontology_filename = 'onto-G4.ttl'
-ontology_filename = 'vrd_world_v1.owl'
+ontology_filename = 'onto-G1.ttl'
+#ontology_filename = 'vrd_world_v1.owl'
 
 # set the method to be used for computing the transitive closure of the
 # class hierarchy asserted in the OWL ontology; they all produce the same
@@ -43,10 +43,8 @@ ontology_filename = 'vrd_world_v1.owl'
 transitive_closure_method = 3
 
 # specify whether or not to include the reflexive characteristic of the
-# rdfs:subClassOf property in the adjacency matrix; if set to True, the
-# result matrix will have 1s filling its diagonal
-# 1 - the 'union of columns' algorithm
-# 2 - relation composition via matrix multiplication
+# rdfs:subClassOf property in the adjacency matrix; if set to True,
+# the tool fills the diagonal of the adjacency matrix with 1s
 include_reflexivity = False 
 
 # instantiate an OCHAM tool object
@@ -110,33 +108,36 @@ print()
 ochamu.show_encoded_triples(adjacency_matrix.nonzero(), classNames)
 
 
-#%% get longest path between source classes and a target class
+#%% longest paths
+
+#%% find a longest path between source classes and a target class
 
 # classes that apply to ontologies (graphs) G1, G2, G3 and G4
-#source_classNames = ['http://example.com/ontologies/onto-G1#G',
-#                     'http://example.com/ontologies/onto-G1#H',
-#                     'http://example.com/ontologies/onto-G1#I',
-#                     'http://example.com/ontologies/onto-G1#J',
-#                     'http://example.com/ontologies/onto-G1#K' ]
-
-# classes that apply to ontology vrd_world_v1.owl
-source_classNames = ['http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#Shoe',
-                     'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#Tree',
-                     'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#WasteBin']
-
+source_classNames = ['http://example.com/ontologies/onto-G1#G',
+                     'http://example.com/ontologies/onto-G1#H',
+                     'http://example.com/ontologies/onto-G1#I',
+                     'http://example.com/ontologies/onto-G1#J',
+                     'http://example.com/ontologies/onto-G1#K' ]
 
 # top-most class in the class hierarchy of ontologies (graphs) G1, G2, G3, G4
-#target_className = 'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#VRDWorldThing'
+target_className = 'http://example.com/ontologies/onto-G1#A'
+
+# classes that apply to ontology vrd_world_v1.owl
+#source_classNames = ['http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#Shoe',
+#                     'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#Tree',
+#                     'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#WasteBin']
 
 # top-most class in the class hierarchy of ontology vrd_world_v1.owl
-target_className = 'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#VRDWorldThing'
+#target_className = 'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#VRDWorldThing'
 
-
+# find a longest simple path between the set of source classes and
+# the target class; a 'simple' path is one with no repeated nodes
 res = ocham.get_longest_path(source_classNames, target_className)
 longest_path_names = res[0]
 longest_path_indices = res[1]
 longest_path_length = res[2]
 
+# display the results
 print('longest path results retrieved')
 print()
 print('a longest simple path:')
@@ -149,15 +150,46 @@ print()
 print(f'length of longest simple path: {longest_path_length}')
 
 
+#%% cycles
+
+#%% find simple cycles in the graph of the class hierarchy
+
+# A simple cycle is a closed path where no node appears twice (except for
+# the initial and final nodes, which close the path).
+#
+# The simplest cycle is a 1-cycle or self-loop
+# e.g. (:X rdfs:subClassOf :X)
+#
+# The next simplest cycle is a 2-cycle 
+# e.g. (:X rdfs:subClassOf :Y), (:Y rdfs:subClassOf :X).
+
+print('Checking for cycles in the graph of the class hierarchy ...')
+print()
+
+cycles = ocham.get_simple_cycles()
+
+cycle_count = 0
+for cycle in list(cycles):
+    cycle_count += 1
+    print(cycle)
+
+print()
+print(f'Number of simple cycles found: {cycle_count}')
 
 
+#%% check adjacency matrix for entries that encode 1-cycles (self-loops)
 
+print('Checking for 1-cycles on diagonal of adjacency matrix ...')
+print()
 
+self_loop_count = 0
+for idx in range(len(classNames)):
+    if adjacency_matrix[idx,idx] == 1.0:
+        self_loop_count += 1
+        print(f'[{idx},{idx}]')
 
-
-
-
-
+print()
+print(f'Number of 1-cycles found: {self_loop_count}')
 
 
 

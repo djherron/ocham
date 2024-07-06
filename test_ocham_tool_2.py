@@ -28,32 +28,27 @@ from owlrl import DeductiveClosure, OWLRL_Semantics
 
 #%% instantiate an OCHAM tool object
 
-#ontology_filename = 'onto-G4.ttl'
-ontology_filename = 'vrd_world_v1.owl'
+# ontologies G1, G2, G3, G4
+ontology_filename = 'onto-G4.ttl'
+url_base = "http://example.com/ontologies/onto-G1#"
 
-# the base prefix (@base) used in the ontologies G1, G2, G3, G4
-#url_base = "http://example.com/ontologies/onto-G1#"
-
-# the base prefix (@base) used in the ontology vrd_world_v1.owl
-url_base = "http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#"
+# VRD-World ontology
+#ontology_filename = 'vrd_world_v1.owl'
+#url_base = "http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#"
 
 # valid values:
-# 0 - do not compute the transitive closure of the class hierarchy; we want
-#     to work with the adjacency matrix for the asserted class hierarchy
 # 1 - the 'union of powers' algorithm
 # 2 - the Warshall algorithm
 # 3 - OWL reasoning (via OWLRL)
 transitive_closure_method = 3
 
 if transitive_closure_method == 0:
-    raise ValueError('ERROR: transitive closure required for this test script')
+    raise ValueError("ERROR: transitive closure required for this script's tests")
 
 # specify whether or not to include the reflexive characteristic of the
-# rdfs:subClassOf property in the adjacency matrix; if set to True, the
-# result matrix will have 1s filling its diagonal
-# 1 - the 'union of columns' algorithm
-# 2 - relation composition via matrix multiplication
-include_reflexivity = False 
+# rdfs:subClassOf property in the adjacency matrix; if set to True,
+# the tool fills the diagonal of the adjacency matrix with 1s
+include_reflexivity = True 
 
 # instantiate an OCHAM tool object
 ocham = OCHAM(ontology_filename,
@@ -88,7 +83,10 @@ print(f"Ontology '{ontology_filename}' loaded into KG")
 print(f'The KG now has {len(kg)} triples')
 
 
-#%% insert individual class membership triple for a set of classes
+#%% insert individual class membership triples for the set of classes
+
+# For each named class in the class hierarchy, we insert a triple into the KG
+# having the form: (:individual_nnnn rdf:type :namedClass)
 
 individual_base_name = 'individual_'
 
@@ -114,12 +112,18 @@ for idx, className in enumerate(classNames):
     individual_names.append(individual_name)
 
 print('Triples asserting one unique individual per class inserted into KG')
-print('Example: :individual_1234 rdf:type :someClass')
+print()
+print('Example: (:individual_1234 rdf:type :someClass)')
+print()
 print(f'Number of triples inserted: {len(classNames)}')
+print()
 print(f'The KG now has {len(kg)} triples')
 
 
 #%% get the individual class membership triples inserted into the KG
+
+print('Retrieving individual triples from KG')
+print()
 
 query = """
         SELECT ?head ?tail
@@ -130,12 +134,13 @@ query = """
 # execute query
 qres = kg.query(query)
 
-print(f'Number of rdf:type triples retrieved from KG: {len(qres)}')
-
 
 #%% display the individual class membership triples inserted into the KG
 
-show_triples = True
+print('Displaying information about the retrieved individual triples')
+print()
+
+show_triples = False
 
 show_blank_nodes = False
 
@@ -189,6 +194,9 @@ print(f'Number of (:individual rdf:type :blankNode) triples: {triples_for_anonym
 
 #%%
 
+print('Inferring the deductive closure of the KG ...')
+print()
+
 # configure the form of KG materialisation we wish to perform
 dc = DeductiveClosure(OWLRL_Semantics,
                       rdfs_closure = False,
@@ -203,18 +211,19 @@ dc = DeductiveClosure(OWLRL_Semantics,
 # materialise) the entire KG
 dc.expand(kg)
 
-print("The deductive closure of the KG has been inferred by OWL reasoning")
+print("Deductive closure of KG inferred by OWL reasoning")
+print()
 print(f'The KG now has {len(kg)} triples')
 
 
-#%% retrieve the class membership triples inferred for synthetic individuals
+#%% display the class membership triples inferred for synthetic individuals
 
 # NOTE: if the ontology uses anonymous classes to define classes in the
 # class hierarchy, then our synthetic individuals may sometimes be inferred
 # to be members of anonymous class (blank nodes) as well as named classes
 
-class_idx_start = 10
-class_idx_end = 14
+class_idx_start = 3
+class_idx_end = 7
 
 if class_idx_end > len(classNames):
     raise ValueError('range of class index values is invalid')
@@ -243,11 +252,14 @@ for idx in range(class_idx_start, class_idx_end):
     for row in qres:
         parentClassName = ochamu.get_uri(row.tail)
         if not 'owl#' in parentClassName:
+            # ignore the (individual rdf:type childClass) triple that we
+            # asserted and inserted into the KG; we don't want to list that
+            # triple as having been inferred
             if parentClassName != childClassName: 
                 print(parentClassName)
     
 
-#%% retrieve the class membership triples inferred for all synthetic individuals
+#%% retrieve the class membership inferred for all synthetic individuals
 
 #
 # structure of kg_results dictionary of dictionaries
@@ -272,6 +284,10 @@ for idx in range(class_idx_start, class_idx_end):
 # 'include_reflexivity' configuration parameter when using the OCHAM tool
 # to create the adjacency matrix.
 
+
+
+print('Retrieving class membership of individuals from KG ...')
+
 # under all normal circumstances, we want to EXCLUDE BLANK NODES
 # (i.e. anonymous classes); the OCHAM tool ignores anonymous classes and
 # never encodes them in the adjacency matrix representations of the class
@@ -282,11 +298,14 @@ exclude_blank_nodes = True
 
 kg_results = {}
 
+# iterate over the classes of the class hierarchy
 for childClassIdx, childClassName in enumerate(classNames):
 
-    # assemble a SPARQL query to get all of the rdf:type triples for
-    # the current individual
+    # get the synthetic individual associated with the current class
     individual_name = individual_names[childClassIdx]
+    
+    # assemble a SPARQL query to get all of the 
+    # (individual rdf:type someClass) triples for the current individual
     individual_uri = url_base + individual_name
     query = "SELECT ?tail WHERE { " + \
             "<" + individual_uri + ">" + " rdf:type ?tail . }"
@@ -294,29 +313,70 @@ for childClassIdx, childClassName in enumerate(classNames):
     # execute the query
     qres = kg.query(query)
     
-    # iterate over the query result set to get the classes for which
-    # the current individual has been inferred to be a member
-    parent_class_membership = []
+    # iterate over the query result set and extract the names of the classes
+    # for which the current synthetic individual is a member in the
+    # materialised KG
+    kg_class_membership = []
     for row in qres:
-        parentClassName = ochamu.get_uri(row.tail)
-        if parentClassName.startswith('http://'):
+        kgClassName = ochamu.get_uri(row.tail)
+        if kgClassName.startswith('http://'):
             blank_node = False
         else:
             blank_node = True
         if blank_node and exclude_blank_nodes:
             continue
-        if not 'owl#' in parentClassName:
-            if parentClassName != childClassName: 
-                parent_class_membership.append(parentClassName)
+        
+        # record that the individual is a member of the given class
+        if not 'owl#' in kgClassName:
+            record_class_membership = True
+            if kgClassName == childClassName:  # (individual rdf:type childClass)
+                if not include_reflexivity:
+                    record_class_membership = False            
+            if record_class_membership:
+                kg_class_membership.append(kgClassName)
 
     kg_results[individual_name] = {'asserted_child_class': childClassName,
-                                   'inferred_parent_classes': parent_class_membership }
+                                   'inferred_class_membership': kg_class_membership }
 
 print()
 print(f'Number of entries in KG results dictionary: {len(kg_results)}')
 
 
-#%% compare the parents in the adjacency matrix with the parents inferred by OWL
+#%% perform the actual equivalence test
+
+# Here we perform tests to verify that the adjacency matrix produced
+# by the OCHAM tool agrees with a KG materialised via OWL reasoning.
+#
+# For each base class in the class hierarchy, we compare
+#
+# A) the parent classes encoded in the transitive closure adjacency matrix 
+#    produced by the OCHAM tool
+#
+# with
+#
+# B) the parent classes inferred by OWL reasoning in a materialised KG 
+#    for a synthetic individual asserted to be a member of the base class.
+#    (That is, we focus on rdfs9 entailment, which infers a given
+#    individual to be a member of all parent classes of some base class.)
+#
+# We do a bi-directional check. First we check that everything encoded
+# in (A) is also recognised in (B), and then we check that everything
+# recognised in (B) is encoded in (A).
+#
+# Any discrepancies between (A) and (B) detected in the bi-directional
+# checks are reported to the console.
+
+# Users of the OCHAM tool may request that reflexivity be reflected in the
+# adjacency matrix by setting 'include_reflexivity = True'. In this case,
+# the adjacency matrix will have 1s filling its entire diagonal.
+#
+# But reflexive relationships arise naturally from transitivity inference 
+# alone if the graph of a class hierarchy contains cycles. Thus, even if
+# the user specifies 'include_reflexivity = False', some reflexive class
+# relationships may still appear on the diagonal of an adjacency matrix.
+# We report any instances of this phenonenon that are detected, along with
+# any instances of discrepancies that are detected.
+
 
 nclasses = len(classNames)
 
@@ -329,19 +389,28 @@ if adjacency_matrix.shape[0] != nclasses or \
    adjacency_matrix.shape[1] != nclasses:
     raise ValueError('problem: adjacency matrix shape incorrect')
 
+# iterate over the classes of the class hierarchy
 for childClassIdx, childClassName in enumerate(classNames):
-
+    
+    # get the synthetic individual that was asserted to be a member
+    # of the current class
     individual_name = individual_names[childClassIdx]
-
+    
+    # get the class information retrieved from the materialised KG in
+    # relation to the current synthetic individual
     res = kg_results[individual_name]
     kg_asserted_class = res['asserted_child_class']
-    kg_parent_classes = res['inferred_parent_classes']
-        
+    kg_class_membership = res['inferred_class_membership']
+    
+    # get the row of the adjacency matrix corresponding to the current class
     adj_mat_child_class_row = adjacency_matrix[childClassIdx]
     
+    # verify there is no mix-up in the extracted KG data
     if not kg_asserted_class == childClassName:
         raise ValueError('problem: data mis-structured')
     
+    # from the child class row of the adjacency matrix, extract the
+    # indices of all of its parent classes encoded there
     adj_mat_parent_class_idxs = adj_mat_child_class_row.nonzero()
     adj_mat_parent_class_idxs2 = adj_mat_parent_class_idxs.squeeze()
     adj_mat_parent_class_idxs3 = []   
@@ -352,68 +421,83 @@ for childClassIdx, childClassName in enumerate(classNames):
             for idx in adj_mat_parent_class_idxs2:
                 adj_mat_parent_class_idxs3.append(idx.item())
     
-    #print(f'child: {childClassIdx}')
-    #print(f'parents: {adj_mat_parent_class_idxs3}')    
-    #print()
-    
-    # for the current child class, check that each of its parent classes
-    # encoded in the adjacency matrix is recognised as a parent class by
-    # OWL reasoning
+    # Iterate over the parent classes encoded in the adjacency matrix 
+    # for the current child class. Check that each adj_mat parent class
+    # is recognised in the materialised KG as a parent class of the 
+    # current child class.
     for parentClassIdx in adj_mat_parent_class_idxs3:
-        className = classNames[parentClassIdx]
-        if not className in kg_parent_classes:
-            # if the user opted to 'include_reflexivity' in the adjacency matrix,
-            # along with the transitive closure of the class hierarchy, then
-            # we will encounter reflexive parents in the adjacency matrix;
-            # the kg_results dictionary does not store reflexive parents, so
-            # we must take care to avoid reporting a discrepancy in this
-            # special edge case
-            if childClassIdx == parentClassIdx and not include_reflexivity:
-                discrepancy_count += 1
-                print()
-                print('DISCREPANCY:')
-                print('child class')
-                print(f'{childClassIdx} {childClassName}')
-                print('has parent class')
-                print(f'{parentClassIdx} {classNames[parentClassIdx]}')
-                print('in the adjacency matrix, but OWL reasoning')
-                print('does not recognise this as a parent class')
+        
+        adj_mat_parentClassName = classNames[parentClassIdx]
+        
+        adj_mat_parent_is_child = False
+        if parentClassIdx == childClassIdx:
+            adj_mat_parent_is_child = True
+        
+        discrepancy = False
+        transitive_induced_reflexivity = False       
+        if not adj_mat_parentClassName in kg_class_membership:
+            discrepancy = True
+            if adj_mat_parent_is_child and not include_reflexivity:
+                discrepancy = False
+                transitive_induced_reflexivity = True
+       
+        if discrepancy:
+            discrepancy_count += 1
+            print()
+            print('DISCREPANCY:')
+            print('The OCHAM tool adjacency matrix says child class')
+            print(f'{childClassIdx} {childClassName}')
+            print('has parent class')
+            print(f'{parentClassIdx} {classNames[parentClassIdx]}')
+            print('but the materialised KG disagrees.  It recognises individual')
+            print(f'{individual_name}')
+            print('as a member of the child class but not of the parent class.')
+
+        if transitive_induced_reflexivity:
+            print()
+            print('TRANSITIVITY INDUCED REFLEXIVITY:')
+            print('The OCHAM tool adjacency matrix says child class')
+            print(f'{childClassIdx} {childClassName}')
+            print('has parent class')
+            print(f'{parentClassIdx} {classNames[parentClassIdx]}')
+            print('which is reflexivity arising from transitivity.')            
+
     
     # for the current child class, check that each of its parent classes
     # as recognised by OWL reasoning is encoded as a parent class in the
     # adjacency matrix        
-    for parentName in kg_parent_classes:
-        if parentName.startswith('http://'):
+    for className in kg_class_membership:
+        if className.startswith('http://'):
             blank_node = False
         else:
             blank_node = True
         if blank_node:  # ignore blank nodes (anonymous classes), if present
             continue
-        parentClassIdx = classNames.index(parentName)
-        if not parentClassIdx in adj_mat_parent_class_idxs3:
+        classIdx = classNames.index(className)
+        if not classIdx in adj_mat_parent_class_idxs3:
             discrepancy_count += 1
             print()
             print('DISCREPANCY:')
-            print('child class')
+            print('The materialised KG says members of child class')
             print(f'{childClassIdx} {childClassName}')
-            print('has parent class')
+            print('have parent class')
             print(f'{parentClassIdx} {classNames[parentClassIdx]}')
-            print('that is recognised by OWL reasoning, but that is not')
-            print('encoded as a direct parent in the adjacency matrix')    
+            print('but the OCHAM tool adjacency matrix does not agree.')   
+
 
 if discrepancy_count > 0:
     print()
-    print('Discrepancies detected between the adjacency matrix and the')
-    print('class hierarchy as inferred by OWL reasoning in the KG.')
+    print('Discrepancies detected between the adjacency matrix and')
+    print('the materialised KG.')
     print()
     print(f'Number of discrepancies detected: {discrepancy_count}')
     print()
 else:
     print()
-    print('The adjacency matrix encodes the transitive closure')
-    print('of the OWL ontology class hierarchy correctly!')
+    print('The adjacency matrix agrees with the materialised KG.')
     print()
     print(f'Number of discrepancies detected: {discrepancy_count}')
     print()   
+
 
 
