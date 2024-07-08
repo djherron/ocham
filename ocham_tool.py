@@ -190,6 +190,18 @@ class OCHAM():
                     parent_idx = self.classNames.index(parent)
                     adj_mat[child_idx, parent_idx] = 1.0             
         
+        # if we are processing the VRD-World ontology, we can do
+        # some further processing to recognise additional rdfs:subClassOf
+        # relationships, ones that are implied by the use of
+        # owl:equivalentClass axioms but which cannot be identified with
+        # a SPARQL query because they are implicit; if additional
+        # rdfs:subClassOf relationships are recognised, these will be 
+        # encoded in the adjacency matrix by doing in-place updates to it
+        if self.onto_filename == 'vrd_world_v1.owl':
+            ochamu.recognise_implicit_subClassOf_relationships(self.kg,
+                                                               adj_mat,
+                                                               self.classNames)
+        
         # store the adjacency matrix of the asserted class hierarchy
         self.adjacency_matrix_asserted = adj_mat
                

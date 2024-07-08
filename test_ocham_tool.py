@@ -27,8 +27,8 @@ import ocham_tool_utils as ochamu
 #
 
 # set ontology filename
-ontology_filename = 'onto-G1.ttl'
-#ontology_filename = 'vrd_world_v1.owl'
+#ontology_filename = 'onto-G1.ttl'
+ontology_filename = 'vrd_world_v1.owl'
 
 # set the method to be used for computing the transitive closure of the
 # class hierarchy asserted in the OWL ontology; they all produce the same
@@ -40,7 +40,7 @@ ontology_filename = 'onto-G1.ttl'
 # 1 - the 'union of powers' algorithm
 # 2 - the Warshall algorithm
 # 3 - OWL reasoning (via OWLRL)
-transitive_closure_method = 3
+transitive_closure_method = 0
 
 # specify whether or not to include the reflexive characteristic of the
 # rdfs:subClassOf property in the adjacency matrix; if set to True,
@@ -113,22 +113,22 @@ ochamu.show_encoded_triples(adjacency_matrix.nonzero(), classNames)
 #%% find a longest path between source classes and a target class
 
 # classes that apply to ontologies (graphs) G1, G2, G3 and G4
-source_classNames = ['http://example.com/ontologies/onto-G1#G',
-                     'http://example.com/ontologies/onto-G1#H',
-                     'http://example.com/ontologies/onto-G1#I',
-                     'http://example.com/ontologies/onto-G1#J',
-                     'http://example.com/ontologies/onto-G1#K' ]
+#source_classNames = ['http://example.com/ontologies/onto-G1#G',
+#                     'http://example.com/ontologies/onto-G1#H',
+#                     'http://example.com/ontologies/onto-G1#I',
+#                     'http://example.com/ontologies/onto-G1#J',
+#                     'http://example.com/ontologies/onto-G1#K' ]
 
 # top-most class in the class hierarchy of ontologies (graphs) G1, G2, G3, G4
-target_className = 'http://example.com/ontologies/onto-G1#A'
+#target_className = 'http://example.com/ontologies/onto-G1#A'
 
 # classes that apply to ontology vrd_world_v1.owl
-#source_classNames = ['http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#Shoe',
-#                     'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#Tree',
-#                     'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#WasteBin']
+source_classNames = ['http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#Shoe',
+                     'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#Tree',
+                     'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#WasteBin']
 
 # top-most class in the class hierarchy of ontology vrd_world_v1.owl
-#target_className = 'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#VRDWorldThing'
+target_className = 'http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#VRDWorldThing'
 
 # find a longest simple path between the set of source classes and
 # the target class; a 'simple' path is one with no repeated nodes

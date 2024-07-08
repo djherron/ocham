@@ -16,6 +16,9 @@ from owlrl import DeductiveClosure, OWLRL_Semantics
 
 import networkx as nx
 
+from rdflib.namespace import RDF, OWL
+from rdflib.namespace import Namespace
+
 
 #%%
 
@@ -447,6 +450,122 @@ def find_simple_cycles(matrix):
     cycles = nx.simple_cycles(G)
 
     return cycles
+
+
+#%%
+
+def recognise_implicit_subClassOf_relationships(kg, adj_mat, classNames):
+    '''
+    Recognise implicit rdfs:subClassOf relationships in the VRD-World
+    ontology and encode these in the adjacency matrix.
+    
+    This function applies only to the VRD-World ontology.
+
+    Parameters
+    ----------
+    kg : rdflib.graph.Graph
+        An RDFLib KG loaded with the VRD-World ontology. We assume that the 
+        KG is not materialised, but this may not matter.
+    adj_mat : 2D tensor
+        The adjacency matrix for the class hierarchy asserted in the 
+        VRD-World ontology that has been built by the OCHAM tool. This
+        is the starting point for this function. This function applies
+        updates to this matrix, to encode further rdfs:subClassOf
+        relationships.
+    classNames : List (of strings)
+        The list of names of the classes in the ontology that is used to
+        construct and interpret the adjacency matrix.
+
+    Returns
+    -------
+    None.
+        But the adjacency matrix is mutable, and the updates applied to it
+        in this function are in fact returned to the caller, in-place.
+
+    '''
+    
+    # These are the classes in the VRD-World ontology, in vrd_world_v1.owl,
+    # that are defined to be owl:equivalentClass of a union of some other
+    # VRD-World classes.
+    vrd_world_classes_to_process = ['CarryCapableMammal',  # 3
+                                    'CarryCapableThing',   # 2
+                                    'DrivableMotorisedVehicle',  # 3
+                                    'EatableThing',    # 2
+                                    'FlyableThing',    # 2
+                                    'HoldCapableThing',  # 4
+                                    'LeanableThing',   # 2
+                                    'MotionCapableThing',  # 2
+                                    'OutsideOfCapableThing',  # 4
+                                    'ParkableMotorisedVehicle', # 4
+                                    'ParkableSurface',  # 2
+                                    'PlayWithCapableThing',  # 4
+                                    'PullCapableThing',  # 4
+                                    'RidableMammal',  # 2
+                                    'RidableSportingGood',  # 4
+                                    'RidableThing',  # 3
+                                    'SkateboardingRelatedThing',  # 3
+                                    'TalkToableThing',  # 2
+                                    'WalkableSurface',  # 3
+                                    'WearCapableThing', # 2
+                                    'WearableSportingGood']  # 2
+    
+    
+    # set the base URL (prefix) used in the VRD-World ontology
+    url_base = "http://www.semanticweb.org/nesy4vrd/ontologies/vrd_world#"
+
+    # establish an RDFLib namespace for the VRD-World ontology
+    VRD = Namespace(url_base)
+    
+    for className in vrd_world_classes_to_process:
+    
+        vrd_world_class = VRD[className]
+    
+        # get the owl:equivalentClass axiom for the class and capture its bnode
+        equivClass_bnode = None
+        for s, p, o in kg.triples((vrd_world_class, OWL.equivalentClass, None)):
+            if p == OWL.equivalentClass:
+                equivClass_bnode = o
+        
+        # get the owl:unionOf axiom for the equivClass bnode and capture its bnode
+        unionOf_bnode = None
+        for s, p, o in kg.triples((equivClass_bnode, None, None)):
+            if p == OWL.unionOf:
+                unionOf_bnode = o
+        
+        keepGoing = True
+        bnode = unionOf_bnode
+        union_classes = []
+        
+        # get all of the classes involved in the union
+        while keepGoing:
+            for s, p, o in kg.triples((bnode, None, None)):
+                if p == RDF.first:
+                    unionClassName = get_uri(o)
+                    union_classes.append(unionClassName)
+                if p == RDF.rest:
+                    if o == RDF.nil:
+                        keepGoing = False
+                    else:
+                        rest_bnode = o
+            if keepGoing:
+                bnode = rest_bnode
+        
+        # recognise and encode the rdfs:subClassOf relationships implied
+        # between the union classes and the class declared to be equivalent
+        # to the union of those classes
+        for uclassName in union_classes:
+            uclassIdx = classNames.index(uclassName)
+            parentClassName = get_uri(vrd_world_class)
+            parentClassIdx = classNames.index(parentClassName)
+            adj_mat[uclassIdx, parentClassIdx] = 1.0
+    
+       
+    return None
+
+
+#%%
+
+
 
 
 
